@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "965783353176",
+    "project_id": "messenger-1fff1",
+    "storage_bucket": "messenger-1fff1.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:965783353176:android:cba0e621111a5082ce572d",
+        "android_client_info": {
+          "package_name": "com.longae.messengerkotlin"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "965783353176-qmf444hddt7ogls15dh1slh0gt618pqu.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBUK59-rxuRxZPAIWscNdN3NajvA2GbCyI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "965783353176-qmf444hddt7ogls15dh1slh0gt618pqu.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
