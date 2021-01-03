@@ -13,11 +13,8 @@ import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
 import com.google.firebase.auth.ktx.auth
 import com.google.firebase.database.DatabaseReference
-import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ktx.database
 import com.google.firebase.ktx.Firebase
-import com.google.firebase.storage.FirebaseStorage
-import com.google.firebase.storage.StorageReference
 import com.google.firebase.storage.ktx.storage
 import kotlinx.android.synthetic.main.activity_main.*
 import java.util.*
@@ -106,9 +103,9 @@ class MainActivity : AppCompatActivity() {
     private fun uploadImageToFirebaseStorage() {
         if(selectedPhotoUri == null) return
         val storage = Firebase.storage
-        var storageRef = storage.reference
+        val storageRef = storage.reference
         val filename =UUID.randomUUID().toString()
-        var spaceRef = storageRef.child("/image/$filename")
+        val spaceRef = storageRef.child("/image/$filename")
         spaceRef.putFile(selectedPhotoUri!!).addOnCompleteListener{
             Log.d("Register"," Register Successfully Image: ${it.result?.metadata?.path}")
             spaceRef.downloadUrl.addOnCompleteListener {
@@ -123,11 +120,14 @@ class MainActivity : AppCompatActivity() {
 
     private fun saveUserToFirebaseDatabase(profileImageUrl:String) {
         val uid = Firebase.auth.uid?:""
-        var database: DatabaseReference= Firebase.database.reference
-        val ref = database.child("users").child("$uid")
+        val database: DatabaseReference= Firebase.database.reference
+        val ref = database.child("users").child(uid)
         val user =User(uid,TextPersonName.text.toString(),profileImageUrl)
         ref.setValue(user).addOnCompleteListener {
             Log.d("Mainactivity","saved user to Database")
+            val intent = Intent(this,LatestMessagesActivity::class.java)
+            intent.flags = Intent.FLAG_ACTIVITY_CLEAR_TASK.or(Intent.FLAG_ACTIVITY_NEW_TASK)
+            startActivity(intent)
         }
 
     }
