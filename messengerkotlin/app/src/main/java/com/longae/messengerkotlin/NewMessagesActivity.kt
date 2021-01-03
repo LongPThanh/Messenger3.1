@@ -1,8 +1,9 @@
 package com.longae.messengerkotlin
 
+import android.content.Intent
 import android.os.Bundle
+import android.provider.Contacts.SettingsColumns.KEY
 import androidx.appcompat.app.AppCompatActivity
-import com.google.firebase.auth.ktx.auth
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.ValueEventListener
@@ -14,20 +15,18 @@ import com.xwray.groupie.GroupieViewHolder
 import com.xwray.groupie.Item
 import kotlinx.android.synthetic.main.activity_new_messages.*
 import kotlinx.android.synthetic.main.user_new_message.view.*
+import kotlinx.coroutines.*
 
 class NewMessagesActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_new_messages)
         supportActionBar?.title = "Select User" // Rename title
-//        val adapter = GroupAdapter<GroupieViewHolder>()
-//        adapter.add(UserItem())
-//        adapter.add(UserItem())
-//        adapter.add(UserItem())
-//        recyclerView_newmessage.adapter = adapter
         fetchUsers()
     }
-
+    companion object{
+        const val USER_KEY = "USER_KEY"
+    }
     private fun fetchUsers() {
         val ref = Firebase.database.reference.child("users")
         ref.addListenerForSingleValueEvent(object:ValueEventListener{
@@ -38,6 +37,15 @@ class NewMessagesActivity : AppCompatActivity() {
                     if (user != null){
                         adapter.add(UserItem(user))
                     }
+                }
+                adapter.setOnItemClickListener { item, view ->
+                    val userItem = item as UserItem
+                    val intent = Intent(view.context,chatlogActivity::class.java)
+
+                    intent.putExtra(USER_KEY,userItem.user)
+                    startActivity(intent)
+
+                    finish()
                 }
                 recyclerView_newmessage.adapter = adapter
             }
@@ -50,8 +58,12 @@ class NewMessagesActivity : AppCompatActivity() {
 }
 class UserItem(val user:User): Item<GroupieViewHolder>(){
     override fun bind(viewHolder: GroupieViewHolder, position: Int) {
-        viewHolder.itemView.textviewUsernameNewmessage.text = user.username
-        Picasso.get().load(user.profileImageUrl).into(viewHolder.itemView.imageView_new_massage)
+        GlobalScope.launch(Dispatchers.Main){
+            async(Dispatchers.IO){viewHolder.itemView.textviewUsernameNewmessage
+                                .text = user.username}.await()
+            withContext(Dispatchers.Main){Picasso.get().load(user.profileImageUrl)
+                         .into(viewHolder.itemView.imageView_new_massage)}
+        }
     }
 
     override fun getLayout(): Int {

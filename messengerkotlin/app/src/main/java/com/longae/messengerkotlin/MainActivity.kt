@@ -17,6 +17,8 @@ import com.google.firebase.database.ktx.database
 import com.google.firebase.ktx.Firebase
 import com.google.firebase.storage.ktx.storage
 import kotlinx.android.synthetic.main.activity_main.*
+import kotlinx.coroutines.*
+import kotlinx.coroutines.tasks.await
 import java.util.*
 
 class MainActivity : AppCompatActivity() {
@@ -48,20 +50,22 @@ class MainActivity : AppCompatActivity() {
             selectedPhotoUri = data.data
 
             try {
-                selectedPhotoUri?.let {
-                    if(Build.VERSION.SDK_INT < 28) {
-                        val bitmap = MediaStore.Images.Media.getBitmap(
-                            this.contentResolver,
-                            selectedPhotoUri
-                        )
-                        imageviewCircle.setImageBitmap(bitmap)
-                    } else {
-                        val source = ImageDecoder.createSource(
-                            this.contentResolver,
-                            selectedPhotoUri!!
-                        )
-                        val bitmap = ImageDecoder.decodeBitmap(source)
-                        imageviewCircle.setImageBitmap(bitmap)
+                GlobalScope.launch(Dispatchers.Main){
+                    selectedPhotoUri?.let {
+                        if(Build.VERSION.SDK_INT < 28) {
+                            val bitmap = MediaStore.Images.Media.getBitmap(
+                                   contentResolver,
+                                    selectedPhotoUri
+                            )
+                            imageviewCircle.setImageBitmap(bitmap)
+                        } else {
+                            val source = ImageDecoder.createSource(
+                                    contentResolver,
+                                    selectedPhotoUri!!
+                            )
+                            val bitmap = ImageDecoder.decodeBitmap(source)
+                            imageviewCircle.setImageBitmap(bitmap)
+                        }
                     }
                 }
             } catch (e: Exception) {
@@ -86,9 +90,16 @@ class MainActivity : AppCompatActivity() {
         Firebase.auth.createUserWithEmailAndPassword(email, password)
             .addOnCompleteListener {
                 if(!it.isSuccessful)return@addOnCompleteListener
-                Log.d("Main", "Successfully created user with uid: ${it.result?.user?.uid}")
-                Toast.makeText(baseContext, "Success", Toast.LENGTH_SHORT).show()
-                uploadImageToFirebaseStorage()
+                GlobalScope.launch(Dispatchers.IO){
+                    withContext(Dispatchers.IO) {
+                        Log.d("Main",
+                                "Successfully created user with uid:"
+                                        + " ${it.result?.user?.uid}")
+                    }
+                    async(Dispatchers.Main){Toast.makeText(baseContext,
+                            "Success", Toast.LENGTH_SHORT).show()}
+                    async(Dispatchers.IO){uploadImageToFirebaseStorage()}
+                }
             }
             .addOnFailureListener {
                 Log.d("Main", "Failed to create new user : ${it.message}")
@@ -102,15 +113,16 @@ class MainActivity : AppCompatActivity() {
 
     private fun uploadImageToFirebaseStorage() {
         if(selectedPhotoUri == null) return
-        val storage = Firebase.storage
-        val storageRef = storage.reference
+        val storageRef = Firebase.storage.reference
         val filename =UUID.randomUUID().toString()
         val spaceRef = storageRef.child("/image/$filename")
         spaceRef.putFile(selectedPhotoUri!!).addOnCompleteListener{
             Log.d("Register"," Register Successfully Image: ${it.result?.metadata?.path}")
             spaceRef.downloadUrl.addOnCompleteListener {
                 Log.d("Mainactivity","File location: ${it.result.toString()}")
-            saveUserToFirebaseDatabase(it.result.toString())
+              GlobalScope.launch(Dispatchers.IO){
+                  saveUserToFirebaseDatabase(it.result.toString())
+              }
             }
                 .addOnFailureListener {
                     /////
@@ -118,16 +130,18 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun saveUserToFirebaseDatabase(profileImageUrl:String) {
-        val uid = Firebase.auth.uid?:""
-        val database: DatabaseReference= Firebase.database.reference
-        val ref = database.child("users").child(uid)
-        val user =User(uid,TextPersonName.text.toString(),profileImageUrl)
-        ref.setValue(user).addOnCompleteListener {
-            Log.d("Mainactivity","saved user to Database")
-            val intent = Intent(this,LatestMessagesActivity::class.java)
-            intent.flags = Intent.FLAG_ACTIVITY_CLEAR_TASK.or(Intent.FLAG_ACTIVITY_NEW_TASK)
-            startActivity(intent)
+    private suspend fun saveUserToFirebaseDatabase(profileImageUrl:String) {
+        GlobalScope.launch(Dispatchers.IO){
+            val uid = Firebase.auth.uid?:""
+            val database: DatabaseReference= Firebase.database.reference
+            val ref = database.child("users").child(uid)
+            val user =User(uid,TextPersonName.text.toString(),profileImageUrl)
+            ref.setValue(user).addOnCompleteListener {
+                Log.d("Mainactivity","saved user to Database")
+                val intent = Intent(this@MainActivity,LatestMessagesActivity::class.java)
+                intent.flags = Intent.FLAG_ACTIVITY_CLEAR_TASK.or(Intent.FLAG_ACTIVITY_NEW_TASK)
+                startActivity(intent)
+            }.await()
         }
 
     }
